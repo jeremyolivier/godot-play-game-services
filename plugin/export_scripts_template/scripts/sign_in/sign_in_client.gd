@@ -18,6 +18,7 @@ signal user_authenticated(is_authenticated: bool)
 ## [param token]: The OAuth 2.0 authorization code as a string.
 signal server_side_access_requested(token: String)
 signal firebase_auth_with_play_games_signal(token: String)
+signal firebase_sign_in_anonymously_signal(token: String)
 
 func _ready() -> void:
 	_connect_signals()
@@ -33,6 +34,9 @@ func _connect_signals() -> void:
 		GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGamesSignal.connect(func(token: String):
 			firebase_auth_with_play_games_signal.emit(token)
 		)
+		GodotPlayGameServices.android_plugin.firebaseSignInAnonymouslySignal.connect(func(token: String):
+        	firebase_sign_in_anonymously_signal.emit(token)
+        )
 
 ## Use this method to check if the user is already authenticated. If the user is authenticated,
 ## a popup will be shown on screen.[br]
@@ -66,3 +70,7 @@ func request_server_side_access(server_client_id: String, force_refresh_token: b
 func firebase_auth(serverAuthCode: String) -> void:
 	if GodotPlayGameServices.android_plugin:
 		GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGames(serverAuthCode)
+
+func sign_in_anonymously() -> void:
+	if GodotPlayGameServices.android_plugin:
+		GodotPlayGameServices.android_plugin.firebaseSignInAnonymously()

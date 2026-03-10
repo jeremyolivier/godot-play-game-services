@@ -8,6 +8,7 @@ import com.google.firebase.auth.auth
 import com.google.firebase.Firebase
 import com.jacobibanez.plugin.android.godotplaygameservices.BuildConfig
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseAuthWithPlayGamesSignal
+import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseSignInAnonymouslySignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.serverSideAccessRequested
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.userAuthenticated
 import org.godotengine.godot.Godot
@@ -112,6 +113,36 @@ class SignInProxy(
                     }
                 } else {
                     Log.w(tag, "signInWithCredential:failure", task.exception)
+                }
+            }
+    }
+
+    fun firebaseSignInAnonymously() {
+        Log.d(tag, "firebaseSignInAnonymously")
+        val auth = Firebase.auth
+
+        auth.signInAnonymously()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(tag, "SignInAnonymously:success")
+                    val user = auth.currentUser
+
+                    user?.getIdToken(false)?.addOnCompleteListener { tokenTask ->
+                        if (tokenTask.isSuccessful) {
+                            val token = tokenTask.result.token
+                            emitSignal(
+                                godot,
+                                BuildConfig.GODOT_PLUGIN_NAME,
+                                firebaseSignInAnonymouslySignal,
+                                token
+                            )
+                        } else {
+                            Log.e(tag, "firebaseSignInAnonymously: failed to fetch token")
+                            emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseSignInAnonymouslySignal, "")
+                        }
+                    }
+                } else {
+                    Log.w(tag, "SignInAnonymously:failure", task.exception)
                 }
             }
     }

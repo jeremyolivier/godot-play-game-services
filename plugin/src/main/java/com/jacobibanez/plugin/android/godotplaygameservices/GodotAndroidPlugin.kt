@@ -112,12 +112,23 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
      *
      *
      * @param serverAuthCode Server Auth code.
-     * token will be included in addition to an access token.
+     * token will be included.
      *
      */
     @UsedByGodot
     fun firebaseAuthWithPlayGames(serverAuthCode: String) =
         signInProxy.firebaseAuthWithPlayGames(serverAuthCode)
+
+    /**
+     * Sign in anonymously with Firebase
+     *
+     *
+     * token will be included.
+     *
+     */
+    @UsedByGodot
+    fun firebaseSignInAnonymously() =
+        signInProxy.firebaseSignInAnonymously()
     /**
      * Use this method to increment a given achievement in the given amount. For normal achievements,
      * use the [unlockAchievement] method instead.

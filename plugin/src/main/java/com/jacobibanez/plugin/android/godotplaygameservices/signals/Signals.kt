@@ -8,6 +8,7 @@ fun getSignals(): MutableSet<SignalInfo> = mutableSetOf(
     SignInSignals.userAuthenticated,
     SignInSignals.serverSideAccessRequested,
     SignInSignals.firebaseAuthWithPlayGamesSignal,
+    SignInSignals.firebaseSignInAnonymouslySignal,
 
     AchievementsSignals.achievementUnlocked,
     AchievementsSignals.achievementsLoaded,
@@ -60,6 +61,13 @@ object SignInSignals {
      * @return An OAuth 2.0 authorization code as a string.
      */
     var firebaseAuthWithPlayGamesSignal = SignalInfo("firebaseAuthWithPlayGamesSignal", String::class.java)
+
+    /**
+     * This signal is emitted when calling the [com.jacobibanez.plugin.android.godotplaygameservices.GodotAndroidPlugin.firebaseSignInAnonymously] method.
+     *
+     * @return An OAuth 2.0 authorization code as a string.
+     */
+    var firebaseSignInAnonymouslySignal = SignalInfo("firebaseSignInAnonymouslySignal", String::class.java)
 }
 
 /**
