@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="[Windows] Deploy to Kizz addons directory" type="BatchConfigurationType" factoryName="Batch">
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="WORKING_DIRECTORY" value="./plugin/demo/addons" />
+    <option name="PARENT_ENVS" value="true" />
+    <envs>
+      <env name="KIZZ_DIR" value="" />
+    </envs>
+    <module name="" />
+    <option name="SCRIPT_NAME" value="./plugin/demo/deploy.bat" />
+    <option name="PARAMETERS" value="" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="godot-play-game-services [assemble]" run_configuration_type="GradleRunConfiguration" />
+    </method>
+  </configuration>
+</component>
