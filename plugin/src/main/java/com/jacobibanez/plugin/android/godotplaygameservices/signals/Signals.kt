@@ -7,6 +7,7 @@ import org.godotengine.godot.plugin.SignalInfo
 fun getSignals(): MutableSet<SignalInfo> = mutableSetOf(
     SignInSignals.userAuthenticated,
     SignInSignals.serverSideAccessRequested,
+    SignInSignals.firebaseAuthWithPlayGamesSignal,
 
     AchievementsSignals.achievementUnlocked,
     AchievementsSignals.achievementsLoaded,
@@ -52,6 +53,13 @@ object SignInSignals {
      * @return An OAuth 2.0 authorization code as a string.
      */
     var serverSideAccessRequested = SignalInfo("serverSideAccessRequested", String::class.java)
+
+    /**
+     * This signal is emitted when calling the [com.jacobibanez.plugin.android.godotplaygameservices.GodotAndroidPlugin.firebaseAuthWithPlayGames] method.
+     *
+     * @return An OAuth 2.0 authorization code as a string.
+     */
+    var firebaseAuthWithPlayGamesSignal = SignalInfo("firebaseAuthWithPlayGamesSignal", String::class.java)
 }
 
 /**

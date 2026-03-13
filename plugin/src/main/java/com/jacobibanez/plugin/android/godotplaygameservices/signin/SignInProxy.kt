@@ -3,7 +3,11 @@ package com.jacobibanez.plugin.android.godotplaygameservices.signin
 import android.util.Log
 import com.google.android.gms.games.GamesSignInClient
 import com.google.android.gms.games.PlayGames
+import com.google.firebase.auth.PlayGamesAuthProvider
+import com.google.firebase.auth.auth
+import com.google.firebase.Firebase
 import com.jacobibanez.plugin.android.godotplaygameservices.BuildConfig
+import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseAuthWithPlayGamesSignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.serverSideAccessRequested
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.userAuthenticated
 import org.godotengine.godot.Godot
@@ -78,6 +82,36 @@ class SignInProxy(
                         "Failed to request server side access. Cause: ${task.exception}",
                         task.exception
                     )
+                }
+            }
+    }
+
+    fun firebaseAuthWithPlayGames(serverAuthCode: String) {
+        Log.d(tag, "firebaseAuthWithPlayGames:$serverAuthCode")
+        val auth = Firebase.auth
+        val credential = PlayGamesAuthProvider.getCredential(serverAuthCode)
+
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(tag, "signInWithCredential:success")
+                    val user = auth.currentUser
+                    user?.getIdToken(true)?.addOnCompleteListener { tokenTask ->
+                        if (tokenTask.isSuccessful) {
+                            val token = tokenTask.result.token
+                            emitSignal(
+                                godot,
+                                BuildConfig.GODOT_PLUGIN_NAME,
+                                firebaseAuthWithPlayGamesSignal,
+                                token
+                            )
+                        } else {
+                            Log.e(tag, "firebaseAuthWithPlayGames: failed to fetch token")
+                            emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseAuthWithPlayGamesSignal, "")
+                        }
+                    }
+                } else {
+                    Log.w(tag, "signInWithCredential:failure", task.exception)
                 }
             }
     }
