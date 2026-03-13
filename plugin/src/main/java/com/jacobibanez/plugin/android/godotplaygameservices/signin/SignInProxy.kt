@@ -3,10 +3,11 @@ package com.jacobibanez.plugin.android.godotplaygameservices.signin
 import android.util.Log
 import com.google.android.gms.games.GamesSignInClient
 import com.google.android.gms.games.PlayGames
+import com.google.firebase.Firebase
 import com.google.firebase.auth.PlayGamesAuthProvider
 import com.google.firebase.auth.auth
-import com.google.firebase.Firebase
 import com.jacobibanez.plugin.android.godotplaygameservices.BuildConfig
+import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseCheckConnectedUserSignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseAuthWithPlayGamesSignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseSignInAnonymouslySignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.serverSideAccessRequested
@@ -85,6 +86,34 @@ class SignInProxy(
                     )
                 }
             }
+    }
+
+    fun firebaseCheckConnectedUser() {
+        Log.d(tag, "firebaseCheckConnectedUser: called")
+        val user = Firebase.auth.currentUser
+        Log.d(tag, "firebaseCheckConnectedUser: currentUser=${user?.uid ?: "null"}")
+
+        if (user == null) {
+            Log.w(tag, "firebaseCheckConnectedUser: no user connected, emitting null")
+            emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseCheckConnectedUserSignal, null)
+            return
+        }
+
+        Log.d(tag, "firebaseCheckConnectedUser: requesting ID token for uid=${user.uid}")
+        user.getIdToken(false).addOnCompleteListener { tokenTask ->
+            if (tokenTask.isSuccessful) {
+                val token = tokenTask.result.token
+                emitSignal(
+                    godot,
+                    BuildConfig.GODOT_PLUGIN_NAME,
+                    firebaseAuthWithPlayGamesSignal,
+                    token
+                )
+            } else {
+                Log.e(tag, "firebaseCheckConnectedUser: failed to fetch token")
+                emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseCheckConnectedUserSignal, "")
+            }
+        }
     }
 
     fun firebaseAuthWithPlayGames(serverAuthCode: String) {

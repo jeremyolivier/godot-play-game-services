@@ -106,7 +106,17 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun requestServerSideAccess(serverClientId: String, forceRefreshToken: Boolean) =
         signInProxy.signInRequestServerSideAccess(serverClientId, forceRefreshToken)
-
+    /**
+     * Check connected user
+     *
+     *
+     *
+     *
+     *
+     */
+    @UsedByGodot
+    fun firebaseCheckConnectedUser() =
+        signInProxy.firebaseCheckConnectedUser()
     /**
      * Auth with Firebase
      *
