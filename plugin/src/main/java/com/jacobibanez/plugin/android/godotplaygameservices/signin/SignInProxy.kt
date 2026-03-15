@@ -4,11 +4,13 @@ import android.util.Log
 import com.google.android.gms.games.GamesSignInClient
 import com.google.android.gms.games.PlayGames
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.PlayGamesAuthProvider
 import com.google.firebase.auth.auth
 import com.jacobibanez.plugin.android.godotplaygameservices.BuildConfig
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseCheckConnectedUserSignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseAuthWithPlayGamesSignal
+import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseLinkWithPlayGamesSignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseSignInAnonymouslySignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.serverSideAccessRequested
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.userAuthenticated
@@ -36,10 +38,7 @@ class SignInProxy(
             } else {
                 Log.e(tag, "User not authenticated. Cause: ${task.exception}", task.exception)
                 emitSignal(
-                    godot,
-                    BuildConfig.GODOT_PLUGIN_NAME,
-                    userAuthenticated,
-                    false
+                    godot, BuildConfig.GODOT_PLUGIN_NAME, userAuthenticated, false
                 )
             }
         }
@@ -73,10 +72,7 @@ class SignInProxy(
                 if (task.isSuccessful) {
                     Log.d(tag, "Access granted to server side for user: $serverClientId")
                     emitSignal(
-                        godot,
-                        BuildConfig.GODOT_PLUGIN_NAME,
-                        serverSideAccessRequested,
-                        task.result
+                        godot, BuildConfig.GODOT_PLUGIN_NAME, serverSideAccessRequested, task.result
                     )
                 } else {
                     Log.e(
@@ -104,54 +100,25 @@ class SignInProxy(
             if (tokenTask.isSuccessful) {
                 val token = tokenTask.result.token
                 emitSignal(
-                    godot,
-                    BuildConfig.GODOT_PLUGIN_NAME,
-                    firebaseAuthWithPlayGamesSignal,
-                    token
+                    godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseCheckConnectedUserSignal, token
                 )
             } else {
                 Log.e(tag, "firebaseCheckConnectedUser: failed to fetch token")
-                emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseCheckConnectedUserSignal, "")
+                emitSignal(
+                    godot,
+                    BuildConfig.GODOT_PLUGIN_NAME,
+                    firebaseCheckConnectedUserSignal,
+                    ""
+                )
             }
         }
-    }
-
-    fun firebaseAuthWithPlayGames(serverAuthCode: String) {
-        Log.d(tag, "firebaseAuthWithPlayGames:$serverAuthCode")
-        val auth = Firebase.auth
-        val credential = PlayGamesAuthProvider.getCredential(serverAuthCode)
-
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d(tag, "signInWithCredential:success")
-                    val user = auth.currentUser
-                    user?.getIdToken(true)?.addOnCompleteListener { tokenTask ->
-                        if (tokenTask.isSuccessful) {
-                            val token = tokenTask.result.token
-                            emitSignal(
-                                godot,
-                                BuildConfig.GODOT_PLUGIN_NAME,
-                                firebaseAuthWithPlayGamesSignal,
-                                token
-                            )
-                        } else {
-                            Log.e(tag, "firebaseAuthWithPlayGames: failed to fetch token")
-                            emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseAuthWithPlayGamesSignal, "")
-                        }
-                    }
-                } else {
-                    Log.w(tag, "signInWithCredential:failure", task.exception)
-                }
-            }
     }
 
     fun firebaseSignInAnonymously() {
         Log.d(tag, "firebaseSignInAnonymously")
         val auth = Firebase.auth
 
-        auth.signInAnonymously()
-            .addOnCompleteListener { task ->
+        auth.signInAnonymously().addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     Log.d(tag, "SignInAnonymously:success")
                     val user = auth.currentUser
@@ -167,7 +134,12 @@ class SignInProxy(
                             )
                         } else {
                             Log.e(tag, "firebaseSignInAnonymously: failed to fetch token")
-                            emitSignal(godot, BuildConfig.GODOT_PLUGIN_NAME, firebaseSignInAnonymouslySignal, "")
+                            emitSignal(
+                                godot,
+                                BuildConfig.GODOT_PLUGIN_NAME,
+                                firebaseSignInAnonymouslySignal,
+                                ""
+                            )
                         }
                     }
                 } else {
@@ -175,4 +147,102 @@ class SignInProxy(
                 }
             }
     }
+
+    fun firebaseLinkWithPlayGames(serverClientId: String) {
+        Log.d(tag, "firebaseLinkWithPlayGames")
+        gamesSignInClient.requestServerSideAccess(serverClientId, false)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(tag, "Access granted to server side for user: $serverClientId")
+                    val credential = PlayGamesAuthProvider.getCredential(task.result)
+                    val auth = Firebase.auth
+                    val user = auth.currentUser
+                    user?.linkWithCredential(credential)?.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                Log.d(tag, "linkWithCredential:success")
+                                emitSignal(
+                                    godot,
+                                    BuildConfig.GODOT_PLUGIN_NAME,
+                                    firebaseLinkWithPlayGamesSignal,
+                                    true
+                                )
+
+                            } else {
+
+                                val exception = task.exception
+                                if (exception is FirebaseAuthUserCollisionException) {
+                                    Log.w(
+                                        tag,
+                                        "Play Games account already linked to another Firebase user"
+                                    )
+                                    emitSignal(
+                                        godot,
+                                        BuildConfig.GODOT_PLUGIN_NAME,
+                                        firebaseLinkWithPlayGamesSignal,
+                                        false
+                                    )
+
+                                } else {
+                                    Log.w(tag, "linkWithCredential:failure", exception)
+                                }
+                            }
+                        }
+                } else {
+                    Log.e(
+                        tag,
+                        "Failed to request server side access. Cause: ${task.exception}",
+                        task.exception
+                    )
+                }
+            }
+    }
+
+    fun firebaseAuthWithPlayGames(serverClientId: String) {
+        Log.d(tag, "firebaseAuthWithPlayGames")
+        gamesSignInClient.requestServerSideAccess(serverClientId, false)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(tag, "Access granted to server side for user: $serverClientId")
+                    val credential = PlayGamesAuthProvider.getCredential(task.result)
+                    val auth = Firebase.auth
+                    auth.signInWithCredential(credential).addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                Log.d(tag, "signInWithCredential:success")
+                                val user = auth.currentUser
+                                user?.getIdToken(false)?.addOnCompleteListener { tokenTask ->
+                                    if (tokenTask.isSuccessful) {
+                                        val token = tokenTask.result.token
+                                        emitSignal(
+                                            godot,
+                                            BuildConfig.GODOT_PLUGIN_NAME,
+                                            firebaseAuthWithPlayGamesSignal,
+                                            token
+                                        )
+                                    } else {
+                                        Log.e(
+                                            tag,
+                                            "firebaseAuthWithPlayGames: failed to fetch token"
+                                        )
+                                        emitSignal(
+                                            godot,
+                                            BuildConfig.GODOT_PLUGIN_NAME,
+                                            firebaseAuthWithPlayGamesSignal,
+                                            ""
+                                        )
+                                    }
+                                }
+                            } else {
+                                Log.w(tag, "signInWithCredential:failure", task.exception)
+                            }
+                        }
+                } else {
+                    Log.e(
+                        tag,
+                        "Failed to request server side access. Cause: ${task.exception}",
+                        task.exception
+                    )
+                }
+            }
+    }
+
 }

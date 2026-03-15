@@ -18,8 +18,9 @@ signal user_authenticated(is_authenticated: bool)
 ## [param token]: The OAuth 2.0 authorization code as a string.
 signal server_side_access_requested(token: String)
 signal firebase_check_connected_user_signal(user_token: Variant)
-signal firebase_auth_with_play_games_signal(token: String)
 signal firebase_sign_in_anonymously_signal(token: String)
+signal firebase_auth_with_play_games_signal(token: String)
+signal firebase_link_with_play_games_signal(is_linked: bool)
 
 func _ready() -> void:
     _connect_signals()
@@ -35,11 +36,14 @@ func _connect_signals() -> void:
         GodotPlayGameServices.android_plugin.firebaseCheckConnectedUserSignal.connect(func(user_token: Variant):
             firebase_check_connected_user_signal.emit(user_token)
         )
+        GodotPlayGameServices.android_plugin.firebaseSignInAnonymouslySignal.connect(func(token: String):
+            firebase_sign_in_anonymously_signal.emit(token)
+        )
         GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGamesSignal.connect(func(token: String):
             firebase_auth_with_play_games_signal.emit(token)
         )
-        GodotPlayGameServices.android_plugin.firebaseSignInAnonymouslySignal.connect(func(token: String):
-            firebase_sign_in_anonymously_signal.emit(token)
+        GodotPlayGameServices.android_plugin.firebaseLinkWithPlayGamesSignal.connect(func(is_linked: bool):
+            firebase_link_with_play_games_signal.emit(is_linked)
         )
 
 ## Use this method to check if the user is already authenticated. If the user is authenticated,
@@ -70,14 +74,18 @@ func request_server_side_access(server_client_id: String, force_refresh_token: b
     if GodotPlayGameServices.android_plugin:
         GodotPlayGameServices.android_plugin.requestServerSideAccess(server_client_id, force_refresh_token)
 
-func check_user() -> void:
+func firebase_check_user() -> void:
     if GodotPlayGameServices.android_plugin:
         GodotPlayGameServices.android_plugin.firebaseCheckConnectedUser()
 
-func firebase_auth(serverAuthCode: String) -> void:
-    if GodotPlayGameServices.android_plugin:
-        GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGames(serverAuthCode)
-
-func sign_in_anonymously() -> void:
+func firebase_sign_in_anonymously() -> void:
     if GodotPlayGameServices.android_plugin:
         GodotPlayGameServices.android_plugin.firebaseSignInAnonymously()
+
+func firebase_auth_with_play_games(serverClientId: String) -> void:
+    if GodotPlayGameServices.android_plugin:
+        GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGames(serverClientId)
+
+func firebase_link_with_play_games(serverClientId: String) -> void:
+    if GodotPlayGameServices.android_plugin:
+        GodotPlayGameServices.android_plugin.firebaseLinkWithPlayGames(serverClientId)
