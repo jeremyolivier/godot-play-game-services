@@ -19,8 +19,8 @@ signal user_authenticated(is_authenticated: bool)
 signal server_side_access_requested(token: String)
 signal firebase_check_connected_user_signal(user_token: Variant)
 signal firebase_sign_in_anonymously_signal(token: String)
-signal firebase_auth_with_play_games_signal(token: String)
-signal firebase_link_with_play_games_signal(is_linked: bool)
+signal firebase_auth_with_google_signal(token: String)
+signal firebase_link_with_google_signal(is_linked: bool)
 
 func _ready() -> void:
     _connect_signals()
@@ -39,11 +39,11 @@ func _connect_signals() -> void:
         GodotPlayGameServices.android_plugin.firebaseSignInAnonymouslySignal.connect(func(token: String):
             firebase_sign_in_anonymously_signal.emit(token)
         )
-        GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGamesSignal.connect(func(token: String):
-            firebase_auth_with_play_games_signal.emit(token)
+        GodotPlayGameServices.android_plugin.firebaseAuthWithGoogleSignal.connect(func(token: String):
+            firebase_auth_with_google_signal.emit(token)
         )
-        GodotPlayGameServices.android_plugin.firebaseLinkWithPlayGamesSignal.connect(func(is_linked: bool):
-            firebase_link_with_play_games_signal.emit(is_linked)
+        GodotPlayGameServices.android_plugin.firebaseLinkWithGoogleSignal.connect(func(is_linked: bool):
+            firebase_link_with_google_signal.emit(is_linked)
         )
 
 ## Use this method to check if the user is already authenticated. If the user is authenticated,
@@ -82,10 +82,10 @@ func firebase_sign_in_anonymously() -> void:
     if GodotPlayGameServices.android_plugin:
         GodotPlayGameServices.android_plugin.firebaseSignInAnonymously()
 
-func firebase_auth_with_play_games(serverClientId: String) -> void:
+func firebase_auth_with_google() -> void:
     if GodotPlayGameServices.android_plugin:
-        GodotPlayGameServices.android_plugin.firebaseAuthWithPlayGames(serverClientId)
+        GodotPlayGameServices.android_plugin.firebaseAuthWithGoogle()
 
-func firebase_link_with_play_games(serverClientId: String) -> void:
+func firebase_link_with_google() -> void:
     if GodotPlayGameServices.android_plugin:
-        GodotPlayGameServices.android_plugin.firebaseLinkWithPlayGames(serverClientId)
+        GodotPlayGameServices.android_plugin.firebaseLinkWithGoogle()

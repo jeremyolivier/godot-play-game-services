@@ -9,8 +9,8 @@ fun getSignals(): MutableSet<SignalInfo> = mutableSetOf(
     SignInSignals.serverSideAccessRequested,
     SignInSignals.firebaseCheckConnectedUserSignal,
     SignInSignals.firebaseSignInAnonymouslySignal,
-    SignInSignals.firebaseAuthWithPlayGamesSignal,
-    SignInSignals.firebaseLinkWithPlayGamesSignal,
+    SignInSignals.firebaseAuthWithGoogleSignal,
+    SignInSignals.firebaseLinkWithGoogleSignal,
 
     AchievementsSignals.achievementUnlocked,
     AchievementsSignals.achievementsLoaded,
@@ -72,18 +72,18 @@ object SignInSignals {
     var firebaseSignInAnonymouslySignal = SignalInfo("firebaseSignInAnonymouslySignal", String::class.java)
 
     /**
-     * This signal is emitted when calling the [com.jacobibanez.plugin.android.godotplaygameservices.GodotAndroidPlugin.firebaseLinkWithPlayGames] method.
+     * This signal is emitted when calling the [com.jacobibanez.plugin.android.godotplaygameservices.GodotAndroidPlugin.firebaseLinkWithGoogle] method.
      *
      * @return An OAuth 2.0 authorization code as a string.
      */
-    var firebaseLinkWithPlayGamesSignal = SignalInfo("firebaseLinkWithPlayGamesSignal", Boolean::class.javaObjectType)
+    var firebaseLinkWithGoogleSignal = SignalInfo("firebaseLinkWithGoogleSignal", Boolean::class.javaObjectType)
 
     /**
-     * This signal is emitted when calling the [com.jacobibanez.plugin.android.godotplaygameservices.GodotAndroidPlugin.firebaseAuthWithPlayGames] method.
+     * This signal is emitted when calling the [com.jacobibanez.plugin.android.godotplaygameservices.GodotAndroidPlugin.firebaseAuthWithGoogle] method.
      *
      * @return An OAuth 2.0 authorization code as a string.
      */
-    var firebaseAuthWithPlayGamesSignal = SignalInfo("firebaseAuthWithPlayGamesSignal", String::class.java)
+    var firebaseAuthWithGoogleSignal = SignalInfo("firebaseAuthWithGoogleSignal", String::class.java)
 }
 
 /**
