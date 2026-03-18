@@ -131,24 +131,22 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
      * Link with Firebase
      *
      *
-     * @param serverClientId Server Client ID.
      * token will be included.
      *
      */
     @UsedByGodot
-    fun firebaseLinkWithPlayGames(serverClientId: String) =
-        signInProxy.firebaseLinkWithPlayGames(serverClientId)
+    fun firebaseLinkWithGoogle() =
+        signInProxy.firebaseLinkWithGoogle()
     /**
      * Auth with Firebase
      *
      *
-     * @param serverClientId Server Client ID.
      * token will be included.
      *
      */
     @UsedByGodot
-    fun firebaseAuthWithPlayGames(serverClientId: String) =
-        signInProxy.firebaseAuthWithPlayGames(serverClientId)
+    fun firebaseAuthWithGoogle() =
+        signInProxy.firebaseAuthWithGoogle()
 
     /**
      * Use this method to increment a given achievement in the given amount. For normal achievements,
