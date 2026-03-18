@@ -5,17 +5,29 @@ import com.google.android.gms.games.GamesSignInClient
 import com.google.android.gms.games.PlayGames
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.PlayGamesAuthProvider
 import com.google.firebase.auth.auth
 import com.jacobibanez.plugin.android.godotplaygameservices.BuildConfig
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseCheckConnectedUserSignal
-import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseAuthWithPlayGamesSignal
-import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseLinkWithPlayGamesSignal
+import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseAuthWithGoogleSignal
+import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseLinkWithGoogleSignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.firebaseSignInAnonymouslySignal
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.serverSideAccessRequested
 import com.jacobibanez.plugin.android.godotplaygameservices.signals.SignInSignals.userAuthenticated
 import org.godotengine.godot.Godot
 import org.godotengine.godot.plugin.GodotPlugin.emitSignal
+
+import kotlinx.coroutines.launch
+
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.GoogleAuthProvider
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import org.godotengine.godot.Dictionary
 
 class SignInProxy(
     private val godot: Godot,
@@ -23,6 +35,8 @@ class SignInProxy(
 ) {
 
     private val tag: String = SignInProxy::class.java.simpleName
+
+    private var pendingGoogleCredential: GoogleIdTokenCredential? = null
 
     fun isAuthenticated() {
         Log.d(tag, "Checking if user is authenticated")
@@ -119,130 +133,147 @@ class SignInProxy(
         val auth = Firebase.auth
 
         auth.signInAnonymously().addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d(tag, "SignInAnonymously:success")
-                    val user = auth.currentUser
+            if (task.isSuccessful) {
+                Log.d(tag, "SignInAnonymously:success")
+                val user = auth.currentUser
 
-                    user?.getIdToken(false)?.addOnCompleteListener { tokenTask ->
-                        if (tokenTask.isSuccessful) {
-                            val token = tokenTask.result.token
-                            emitSignal(
-                                godot,
-                                BuildConfig.GODOT_PLUGIN_NAME,
-                                firebaseSignInAnonymouslySignal,
-                                token
-                            )
-                        } else {
-                            Log.e(tag, "firebaseSignInAnonymously: failed to fetch token")
-                            emitSignal(
-                                godot,
-                                BuildConfig.GODOT_PLUGIN_NAME,
-                                firebaseSignInAnonymouslySignal,
-                                ""
-                            )
-                        }
+                user?.getIdToken(false)?.addOnCompleteListener { tokenTask ->
+                    if (tokenTask.isSuccessful) {
+                        val token = tokenTask.result.token
+                        emitSignal(
+                            godot,
+                            BuildConfig.GODOT_PLUGIN_NAME,
+                            firebaseSignInAnonymouslySignal,
+                            token
+                        )
+                    } else {
+                        Log.e(tag, "firebaseSignInAnonymously: failed to fetch token")
+                        emitSignal(
+                            godot,
+                            BuildConfig.GODOT_PLUGIN_NAME,
+                            firebaseSignInAnonymouslySignal,
+                            ""
+                        )
                     }
-                } else {
-                    Log.w(tag, "SignInAnonymously:failure", task.exception)
                 }
+            } else {
+                Log.w(tag, "SignInAnonymously:failure", task.exception)
             }
+        }
     }
 
-    fun firebaseLinkWithPlayGames(serverClientId: String) {
-        Log.d(tag, "firebaseLinkWithPlayGames")
-        gamesSignInClient.requestServerSideAccess(serverClientId, false)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d(tag, "Access granted to server side for user: $serverClientId")
-                    val credential = PlayGamesAuthProvider.getCredential(task.result)
-                    val auth = Firebase.auth
-                    val user = auth.currentUser
-                    user?.linkWithCredential(credential)?.addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                Log.d(tag, "linkWithCredential:success")
+    fun firebaseAuthWithGoogle() {
+        Log.d(tag, "firebaseAuthWithGoogle")
+        try {
+            // Sign in to Firebase using the token
+            val credential =
+                GoogleAuthProvider.getCredential(pendingGoogleCredential?.idToken, null)
+            val auth = Firebase.auth
+            val oldUser = auth.currentUser
+            auth.signInWithCredential(credential)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(tag, "signInWithCredential:success")
+                        oldUser?.delete()
+                        val user = auth.currentUser
+                        user?.getIdToken(false)?.addOnCompleteListener { tokenTask ->
+                            if (tokenTask.isSuccessful) {
+                                val token = tokenTask.result.token
                                 emitSignal(
                                     godot,
                                     BuildConfig.GODOT_PLUGIN_NAME,
-                                    firebaseLinkWithPlayGamesSignal,
-                                    true
+                                    firebaseAuthWithGoogleSignal,
+                                    token, oldUser?.uid
                                 )
-
                             } else {
-
-                                val exception = task.exception
-                                if (exception is FirebaseAuthUserCollisionException) {
-                                    Log.w(
-                                        tag,
-                                        "Play Games account already linked to another Firebase user"
-                                    )
-                                    emitSignal(
-                                        godot,
-                                        BuildConfig.GODOT_PLUGIN_NAME,
-                                        firebaseLinkWithPlayGamesSignal,
-                                        false
-                                    )
-
-                                } else {
-                                    Log.w(tag, "linkWithCredential:failure", exception)
-                                }
+                                Log.e(
+                                    tag,
+                                    "firebaseAuthWithGoogle: failed to fetch token"
+                                )
+                                emitSignal(
+                                    godot,
+                                    BuildConfig.GODOT_PLUGIN_NAME,
+                                    firebaseAuthWithGoogleSignal,
+                                    "", ""
+                                )
                             }
                         }
-                } else {
-                    Log.e(
-                        tag,
-                        "Failed to request server side access. Cause: ${task.exception}",
-                        task.exception
-                    )
+                    } else {
+                        // If sign in fails, display a message to the user
+                        Log.w(tag, "signInWithCredential:failure", task.exception)
+                    }
                 }
-            }
+
+        } catch (e: GetCredentialException) {
+            Log.e("GodotPlugin", "Erreur: ${e.localizedMessage}")
+        }
     }
 
-    fun firebaseAuthWithPlayGames(serverClientId: String) {
-        Log.d(tag, "firebaseAuthWithPlayGames")
-        gamesSignInClient.requestServerSideAccess(serverClientId, false)
-            .addOnCompleteListener { task ->
+    fun firebaseLinkWithGoogle() {
+        Log.d(tag, "firebaseLinkWithGoogle")
+        val activity = godot.getActivity() ?: return
+        val resId = activity.resources.getIdentifier(
+            "default_web_client_id",
+            "string",
+            activity.packageName
+        )
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setServerClientId(activity.getString(resId))
+            .setFilterByAuthorizedAccounts(false)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        val credentialManager = CredentialManager.create(activity)
+        CoroutineScope(Dispatchers.Main).launch {
+
+            val result = credentialManager.getCredential(
+                context = activity,
+                request = request
+            )
+
+            // Create Google ID Token
+            val googleIdTokenCredential =
+                GoogleIdTokenCredential.createFrom(result.credential.data)
+            // Sign in to Firebase with using the token
+            val credential =
+                GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+            val auth = Firebase.auth
+            val user = auth.currentUser
+            user?.linkWithCredential(credential)?.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    Log.d(tag, "Access granted to server side for user: $serverClientId")
-                    val credential = PlayGamesAuthProvider.getCredential(task.result)
-                    val auth = Firebase.auth
-                    auth.signInWithCredential(credential).addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                Log.d(tag, "signInWithCredential:success")
-                                val user = auth.currentUser
-                                user?.getIdToken(false)?.addOnCompleteListener { tokenTask ->
-                                    if (tokenTask.isSuccessful) {
-                                        val token = tokenTask.result.token
-                                        emitSignal(
-                                            godot,
-                                            BuildConfig.GODOT_PLUGIN_NAME,
-                                            firebaseAuthWithPlayGamesSignal,
-                                            token
-                                        )
-                                    } else {
-                                        Log.e(
-                                            tag,
-                                            "firebaseAuthWithPlayGames: failed to fetch token"
-                                        )
-                                        emitSignal(
-                                            godot,
-                                            BuildConfig.GODOT_PLUGIN_NAME,
-                                            firebaseAuthWithPlayGamesSignal,
-                                            ""
-                                        )
-                                    }
-                                }
-                            } else {
-                                Log.w(tag, "signInWithCredential:failure", task.exception)
-                            }
-                        }
-                } else {
-                    Log.e(
-                        tag,
-                        "Failed to request server side access. Cause: ${task.exception}",
-                        task.exception
+                    Log.d(tag, "linkWithCredential:success")
+                    emitSignal(
+                        godot,
+                        BuildConfig.GODOT_PLUGIN_NAME,
+                        firebaseLinkWithGoogleSignal,
+                        true
                     )
+
+                } else {
+
+                    val exception = task.exception
+                    if (exception is FirebaseAuthUserCollisionException) {
+                        Log.w(
+                            tag,
+                            "Google account already linked to another Firebase user"
+                        )
+                        pendingGoogleCredential = googleIdTokenCredential
+                        emitSignal(
+                            godot,
+                            BuildConfig.GODOT_PLUGIN_NAME,
+                            firebaseLinkWithGoogleSignal,
+                            false
+                        )
+
+                    } else {
+                        Log.w(tag, "linkWithCredential:failure", exception)
+                    }
                 }
             }
+        }
     }
-
 }
